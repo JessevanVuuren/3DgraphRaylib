@@ -18,10 +18,8 @@ Vector3 origin = {-ORIGIN_OFFSET, -ORIGIN_OFFSET, -ORIGIN_OFFSET};
 Vector3 camera_start_pos = {2, 2, 2};
 Vector3 camera_start_up = {0, 1, 0};
 
-// char const *image_path = "./4140047.png";
-// char const *image_path = "./5b4.png";
-// char const *image_path = "./image.png";
-char const *image_path = "./Lenna_(test_image).png";
+// char const *image_path = "./imgs/4140047.png";
+char const *image_path = "./imgs/Lenna_(test_image).png";
 
 struct PixelPoint{
     float r;

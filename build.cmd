@@ -1,0 +1,1 @@
+gcc -I./libs/raylib/ -L./libs/raylib/ main.c -o out/3dGraph -lraylib -lopengl32 -lgdi32 -lwinmm && .\out\3dGraph.exe
