@@ -19,13 +19,14 @@ Vector3 camera_start_pos = {2, 2, 2};
 Vector3 camera_start_up = {0, 1, 0};
 
 // char const *image_path = "./imgs/4140047.png";
-char const *image_path = "./imgs/Lenna_(test_image).png";
+// char const *image_path = "./imgs/Lenna_(test_image).png";
+char const *image_path = "./imgs/Flag_of_the_Netherlands.png";
 
-struct PixelPoint{
+typedef struct{
     float r;
     float g;
     float b;
-};
+}PixelPoint;
 
 
 void draw_graph(int steps) {
@@ -56,8 +57,8 @@ void place_point_on_graph(Vector3 pos, Color color) {
 }
 
 
-struct PixelPoint *normalize_img_colors(Color *colors, int size) {
-    struct PixelPoint *pixel_points = (struct PixelPoint *)malloc(size * sizeof(struct PixelPoint));
+PixelPoint *normalize_img_colors(Color *colors, int size) {
+    PixelPoint *pixel_points = malloc(size * sizeof(PixelPoint));
     int max_color_size = 255;
 
     for (int i = 0; i < size; i++) {
@@ -67,6 +68,25 @@ struct PixelPoint *normalize_img_colors(Color *colors, int size) {
     }
     
     return pixel_points;
+}
+
+void remove_double(PixelPoint *pixels, int *size) {
+    int n = *size;
+
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < n; j++) {
+            if (pixels[i].r == pixels[j].r && pixels[i].g == pixels[j].g && pixels[i].b == pixels[j].b) {
+                for (int l = j; l < n; l++) {
+                    pixels[l] = pixels[l + 1];
+                }
+
+                n--;
+                j--;
+            }
+        }
+    }
+
+    *size = n;
 }
 
 int main() {
@@ -83,9 +103,14 @@ int main() {
     Image img = LoadImage(image_path);
     Color *colors = LoadImageColors(img);
     int pixels_length = img.width * img.height;
-    struct PixelPoint *pixel_points = normalize_img_colors(colors, pixels_length);
+    PixelPoint *pixel_points = normalize_img_colors(colors, pixels_length);
+
+    printf("Original: %d\n", pixels_length);
+    remove_double(pixel_points, &pixels_length);
+    printf("Compressed: %d\n", pixels_length);
 
     while (!WindowShouldClose()) {
+        printf("FPS: %d\n", GetFPS());
 
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&camera, -dist * ZOOM_SPEED);
