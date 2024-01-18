@@ -6,6 +6,10 @@
 #include <raymath.h>
 #include <rcamera.h>
 
+#define STB_DS_IMPLEMENTATION
+#include "stb_ds.h"
+
+
 #define CUBE_SIZE .5
 #define CAMERA_SPEED 0.01
 #define ZOOM_SPEED 1
@@ -19,14 +23,12 @@ Vector3 camera_start_pos = {2, 2, 2};
 Vector3 camera_start_up = {0, 1, 0};
 
 // char const *image_path = "./imgs/4140047.png";
-// char const *image_path = "./imgs/Lenna_(test_image).png";
-char const *image_path = "./imgs/Flag_of_the_Netherlands.png";
+char const *image_path = "./imgs/Lenna_(test_image).png";
+// char const *image_path = "./imgs/Flag_of_the_Netherlands.png";
 
-typedef struct{
-    float r;
-    float g;
-    float b;
-}PixelPoint;
+typedef struct {
+    Color key;
+} PixelPoint;
 
 
 void draw_graph(int steps) {
@@ -47,7 +49,6 @@ void draw_graph(int steps) {
 
         DrawLine3D((Vector3){new_step, -ORIGIN_OFFSET, -ORIGIN_OFFSET}, (Vector3){new_step, -ORIGIN_OFFSET, ORIGIN_OFFSET}, line_color);
         DrawLine3D((Vector3){-ORIGIN_OFFSET, -ORIGIN_OFFSET, new_step}, (Vector3){ORIGIN_OFFSET, -ORIGIN_OFFSET, new_step}, line_color);
-
     }
 }
 
@@ -56,42 +57,45 @@ void place_point_on_graph(Vector3 pos, Color color) {
     DrawCube(local_pos, POINT_SIZE, POINT_SIZE, POINT_SIZE, color);
 }
 
-
-PixelPoint *normalize_img_colors(Color *colors, int size) {
-    PixelPoint *pixel_points = malloc(size * sizeof(PixelPoint));
-    int max_color_size = 255;
-
-    for (int i = 0; i < size; i++) {
-        pixel_points[i].r = colors[i].r / (float)max_color_size;
-        pixel_points[i].g = colors[i].g / (float)max_color_size;
-        pixel_points[i].b = colors[i].b / (float)max_color_size;
-    }
-    
-    return pixel_points;
-}
-
-void remove_double(PixelPoint *pixels, int *size) {
+PixelPoint *fill_hashmap(Color *colors, int *size) {
+    PixelPoint *pp = NULL;
     int n = *size;
 
     for (int i = 0; i < n; i++) {
-        for (int j = i + 1; j < n; j++) {
-            if (pixels[i].r == pixels[j].r && pixels[i].g == pixels[j].g && pixels[i].b == pixels[j].b) {
-                for (int l = j; l < n; l++) {
-                    pixels[l] = pixels[l + 1];
-                }
-
-                n--;
-                j--;
-            }
+        int pixel = hmgeti(pp, colors[i]);
+        if (pixel < 0) {
+            PixelPoint point = {.key = colors[i]};
+            hmputs(pp, point);
         }
     }
 
-    *size = n;
+    *size = hmlen(pp);
+    return pp;
+}
+
+PixelPoint *make_LOP_list(Color *colors, int size, int LOP) {
+    PixelPoint *LOP_pixels = malloc(LOP * sizeof(PixelPoint));
+    int pixels = size / LOP;
+    for (int i = 0; i < LOP; i++) {
+        float r, g, b = 0;
+        for (int j = (i * pixels); j < ((i + 1) * pixels); j++) {
+            r += colors[j].r;
+            g += colors[j].g;
+            b += colors[j].b;
+        }
+
+        r = r / (float)pixels;
+        g = g / (float)pixels;
+        b = b / (float)pixels;
+
+        PixelPoint pixel = {.key = (Color){r, g, b}};
+        LOP_pixels[i] = pixel;
+    }
+
+    return LOP_pixels;
 }
 
 int main() {
-    InitWindow(1200, 800, "Hello world");
-    SetTargetFPS(60);
 
     Camera3D camera = {
         .position = camera_start_pos,
@@ -103,18 +107,38 @@ int main() {
     Image img = LoadImage(image_path);
     Color *colors = LoadImageColors(img);
     int pixels_length = img.width * img.height;
-    PixelPoint *pixel_points = normalize_img_colors(colors, pixels_length);
 
-    printf("Original: %d\n", pixels_length);
-    remove_double(pixel_points, &pixels_length);
-    printf("Compressed: %d\n", pixels_length);
+    int LOP = 1;
 
+    PixelPoint *pixel_points = make_LOP_list(colors, pixels_length, LOP);
+    // for (int i = 0; i < LOP; i++) {
+    //     printf("R: %u, G: %u, B: %u\n", pixel_points[i].key.r, pixel_points[i].key.g, pixel_points[i].key.b);
+    // }
+    // PixelPoint *pixel_points = fill_hashmap(colors, &pixels_length);
+
+
+    SetTargetFPS(60);
+    InitWindow(1200, 800, "3D graph - Raylib");
     while (!WindowShouldClose()) {
-        printf("FPS: %d\n", GetFPS());
+        // printf("FPS: %d\n", GetFPS());
 
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&camera, -dist * ZOOM_SPEED);
-
+        if (dist != 0.0) {
+            LOP += dist;
+            if (LOP <= 0) {
+                LOP = 0;
+            }
+            PixelPoint *pixel_points = make_LOP_list(colors, pixels_length, LOP);
+        }
+        printf("LOP: %d\n", LOP);
+        if (IsKeyDown(KEY_W)) {
+            LOP += 5;
+        }
+        if (IsKeyDown(KEY_S)) {
+            LOP -= 5;
+            if (LOP <= 0) LOP = 0;
+        }
 
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             Vector2 mouseDelta = GetMouseDelta();
@@ -128,18 +152,16 @@ int main() {
         }
 
         BeginDrawing();
-            BeginMode3D(camera);
-                ClearBackground(GetColor(0x181818AA));
-                for (int i = 0; i < pixels_length; i++) {
-                    Vector3 place = {pixel_points[i].r, pixel_points[i].g, pixel_points[i].b};
-                    Color color = {
-                        (unsigned char)(pixel_points[i].r * 255), 
-                        (unsigned char)(pixel_points[i].g * 255), 
-                        (unsigned char)(pixel_points[i].b * 255), 255};
-                    place_point_on_graph(place, color);
-                }
-                draw_graph(10);
-            EndMode3D();
+        BeginMode3D(camera);
+        ClearBackground(GetColor(0x181818AA));
+        for (int i = 0; i < LOP; i++) {
+
+            Vector3 place = {pixel_points[i].key.r / (float)255, pixel_points[i].key.g / (float)255, pixel_points[i].key.b / (float)255};
+            Color color = {pixel_points[i].key.r, pixel_points[i].key.g, pixel_points[i].key.b, 255};
+            place_point_on_graph(place, color);
+        }
+        draw_graph(10);
+        EndMode3D();
         EndDrawing();
     }
     free(pixel_points);
