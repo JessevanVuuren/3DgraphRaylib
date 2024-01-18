@@ -17,10 +17,15 @@
 #define ORIGIN_OFFSET ((float)SCALE / 2)
 #define POINT_SIZE .005
 
+#define HEIGHT 800
+#define WIDTH 1200
+
 Vector3 target = {0};
 Vector3 origin = {-ORIGIN_OFFSET, -ORIGIN_OFFSET, -ORIGIN_OFFSET};
 Vector3 camera_start_pos = {2, 2, 2};
 Vector3 camera_start_up = {0, 1, 0};
+
+Vector2 slider_nob_pos = {20, HEIGHT / 2};
 
 // char const *image_path = "./imgs/4140047.png";
 char const *image_path = "./imgs/Lenna_(test_image).png";
@@ -57,42 +62,43 @@ void place_point_on_graph(Vector3 pos, Color color) {
     DrawCube(local_pos, POINT_SIZE, POINT_SIZE, POINT_SIZE, color);
 }
 
-PixelPoint *fill_hashmap(Color *colors, int *size) {
-    PixelPoint *pp = NULL;
-    int n = *size;
-
-    for (int i = 0; i < n; i++) {
-        int pixel = hmgeti(pp, colors[i]);
-        if (pixel < 0) {
-            PixelPoint point = {.key = colors[i]};
-            hmputs(pp, point);
-        }
-    }
-
-    *size = hmlen(pp);
-    return pp;
-}
-
 PixelPoint *make_LOP_list(Color *colors, int size, int LOP) {
-    PixelPoint *LOP_pixels = malloc(LOP * sizeof(PixelPoint));
+    PixelPoint *pp = NULL;
     int pixels = size / LOP;
     for (int i = 0; i < LOP; i++) {
-        float r, g, b = 0;
-        for (int j = (i * pixels); j < ((i + 1) * pixels); j++) {
+        float r = 0, g = 0, b = 0;
+        for (int j = i * pixels; j < (i + 1) * pixels; j++) {
             r += colors[j].r;
             g += colors[j].g;
             b += colors[j].b;
         }
-
-        r = r / (float)pixels;
-        g = g / (float)pixels;
-        b = b / (float)pixels;
+        r = r / pixels;
+        g = g / pixels;
+        b = b / pixels;
 
         PixelPoint pixel = {.key = (Color){r, g, b}};
-        LOP_pixels[i] = pixel;
+        hmputs(pp, pixel);
     }
+    return pp;
+}
 
-    return LOP_pixels;
+void add_slider(int max, int *LOP) {
+    int n = *LOP;
+    float pos = slider_nob_pos.y - 15;
+    float new = HEIGHT - 60 - 7.5 - pos;
+    float nn = new / n;
+    *LOP = n;
+    printf("LOP: %d\n", LOP);
+
+    DrawRectangle(30, 30, 10, HEIGHT - 60, WHITE);
+    DrawRectangle(slider_nob_pos.x, slider_nob_pos.y, 30, 30, GetColor(0xffdd33FF));
+    Vector2 mouse_pos = GetMousePosition();
+    if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+        if (mouse_pos.x > slider_nob_pos.x && mouse_pos.x < slider_nob_pos.x + 30 &&
+            mouse_pos.y > slider_nob_pos.y && mouse_pos.y < slider_nob_pos.y + 30) {
+            slider_nob_pos.y = slider_nob_pos.y + GetMouseDelta().y;
+        }
+    }
 }
 
 int main() {
@@ -108,37 +114,29 @@ int main() {
     Color *colors = LoadImageColors(img);
     int pixels_length = img.width * img.height;
 
-    int LOP = 1;
+    int LOP = 10;
+
 
     PixelPoint *pixel_points = make_LOP_list(colors, pixels_length, LOP);
-    // for (int i = 0; i < LOP; i++) {
-    //     printf("R: %u, G: %u, B: %u\n", pixel_points[i].key.r, pixel_points[i].key.g, pixel_points[i].key.b);
-    // }
-    // PixelPoint *pixel_points = fill_hashmap(colors, &pixels_length);
 
-
-    SetTargetFPS(60);
-    InitWindow(1200, 800, "3D graph - Raylib");
+    SetTargetFPS(120);
+    InitWindow(WIDTH, HEIGHT, "3D graph - Raylib");
     while (!WindowShouldClose()) {
         // printf("FPS: %d\n", GetFPS());
 
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&camera, -dist * ZOOM_SPEED);
-        if (dist != 0.0) {
-            LOP += dist;
-            if (LOP <= 0) {
-                LOP = 0;
-            }
-            PixelPoint *pixel_points = make_LOP_list(colors, pixels_length, LOP);
-        }
-        printf("LOP: %d\n", LOP);
-        if (IsKeyDown(KEY_W)) {
-            LOP += 5;
-        }
-        if (IsKeyDown(KEY_S)) {
-            LOP -= 5;
-            if (LOP <= 0) LOP = 0;
-        }
+
+        if (IsKeyDown(KEY_W)) LOP++;
+        if (IsKeyDown(KEY_S)) LOP--;
+
+        if (LOP <= 0) LOP = 1;
+        if (LOP >= pixels_length) LOP = pixels_length;
+
+        pixel_points = make_LOP_list(colors, pixels_length, LOP);
+
+
+
 
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             Vector2 mouseDelta = GetMouseDelta();
@@ -154,16 +152,15 @@ int main() {
         BeginDrawing();
         BeginMode3D(camera);
         ClearBackground(GetColor(0x181818AA));
-        for (int i = 0; i < LOP; i++) {
-
+        for (int i = 0; i < hmlen(pixel_points); i++) {
             Vector3 place = {pixel_points[i].key.r / (float)255, pixel_points[i].key.g / (float)255, pixel_points[i].key.b / (float)255};
             Color color = {pixel_points[i].key.r, pixel_points[i].key.g, pixel_points[i].key.b, 255};
             place_point_on_graph(place, color);
         }
         draw_graph(10);
         EndMode3D();
+        add_slider(pixels_length, &LOP);
         EndDrawing();
     }
-    free(pixel_points);
     CloseWindow();
 }
