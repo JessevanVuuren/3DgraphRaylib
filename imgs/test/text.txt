@@ -1,0 +1,25 @@
+
+
+
+
+p
+
+
+
+
+p
+
+
+
+
+p
+
+
+
+
+p
+
+pixels / LOP = 4
+20     / 5   = 4
+
+LOP = amount of pixels

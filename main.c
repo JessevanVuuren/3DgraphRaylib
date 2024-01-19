@@ -27,8 +27,8 @@ Vector3 camera_start_up = {0, 1, 0};
 
 Vector2 slider_nob_pos = {20, HEIGHT / 2};
 
-// char const *image_path = "./imgs/4140047.png";
-char const *image_path = "./imgs/Lenna_(test_image).png";
+char const *image_path = "./imgs/4140047.png";
+// char const *image_path = "./imgs/Lenna_(test_image).png";
 // char const *image_path = "./imgs/Flag_of_the_Netherlands.png";
 
 typedef struct {
@@ -65,6 +65,7 @@ void place_point_on_graph(Vector3 pos, Color color) {
 PixelPoint *make_LOP_list(Color *colors, int size, int LOP) {
     PixelPoint *pp = NULL;
     int pixels = size / LOP;
+
     for (int i = 0; i < LOP; i++) {
         float r = 0, g = 0, b = 0;
         for (int j = i * pixels; j < (i + 1) * pixels; j++) {
@@ -82,21 +83,23 @@ PixelPoint *make_LOP_list(Color *colors, int size, int LOP) {
     return pp;
 }
 
+
+
 void add_slider(int max, int *LOP) {
-    int n = *LOP;
-    float pos = slider_nob_pos.y - 15;
-    float new = HEIGHT - 60 - 7.5 - pos;
-    float nn = new / n;
-    *LOP = n;
-    printf("LOP: %d\n", LOP);
+    int y = HEIGHT - slider_nob_pos.y - 46;
+    float dist = y / (float)(HEIGHT - 62);
+    *LOP = dist * max;
 
     DrawRectangle(30, 30, 10, HEIGHT - 60, WHITE);
     DrawRectangle(slider_nob_pos.x, slider_nob_pos.y, 30, 30, GetColor(0xffdd33FF));
     Vector2 mouse_pos = GetMousePosition();
+
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
-        if (mouse_pos.x > slider_nob_pos.x && mouse_pos.x < slider_nob_pos.x + 30 &&
-            mouse_pos.y > slider_nob_pos.y && mouse_pos.y < slider_nob_pos.y + 30) {
-            slider_nob_pos.y = slider_nob_pos.y + GetMouseDelta().y;
+        if (mouse_pos.x < slider_nob_pos.x + 70) {
+            if (mouse_pos.y > 15 && mouse_pos.y < HEIGHT - 45) {
+
+                slider_nob_pos.y = mouse_pos.y;
+            }
         }
     }
 }
@@ -114,10 +117,10 @@ int main() {
     Color *colors = LoadImageColors(img);
     int pixels_length = img.width * img.height;
 
-    int LOP = 10;
 
-
-    PixelPoint *pixel_points = make_LOP_list(colors, pixels_length, LOP);
+    PixelPoint *pixel_points = make_LOP_list(colors, pixels_length, pixels_length);
+    int LOP = hmlen(pixel_points);
+    int ww = hmlen(pixel_points);
 
     SetTargetFPS(120);
     InitWindow(WIDTH, HEIGHT, "3D graph - Raylib");
@@ -127,21 +130,20 @@ int main() {
         float dist = GetMouseWheelMove();
         CameraMoveToTarget(&camera, -dist * ZOOM_SPEED);
 
-        if (IsKeyDown(KEY_W)) LOP++;
-        if (IsKeyDown(KEY_S)) LOP--;
-
         if (LOP <= 0) LOP = 1;
         if (LOP >= pixels_length) LOP = pixels_length;
 
         pixel_points = make_LOP_list(colors, pixels_length, LOP);
-
-
+        printf("pixels: %d, amount_avrg: %d, LOP: %d\n", hmlen(pixel_points), pixels_length / LOP, LOP);
 
 
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             Vector2 mouseDelta = GetMouseDelta();
-            CameraYaw(&camera, -mouseDelta.x * CAMERA_SPEED, true);
-            CameraPitch(&camera, -mouseDelta.y * CAMERA_SPEED, true, true, false);
+            Vector2 mousePos = GetMousePosition();
+            if (mousePos.x > 70) {
+                CameraYaw(&camera, -mouseDelta.x * CAMERA_SPEED, true);
+                CameraPitch(&camera, -mouseDelta.y * CAMERA_SPEED, true, true, false);
+            }
         }
 
         if (IsKeyPressed(KEY_R)) {
@@ -159,7 +161,9 @@ int main() {
         }
         draw_graph(10);
         EndMode3D();
-        add_slider(pixels_length, &LOP);
+
+        DrawRectangle(0, 0, 70, HEIGHT, GetColor(0x404040FF));
+        add_slider(ww, &LOP);
         EndDrawing();
     }
     CloseWindow();
