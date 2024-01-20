@@ -27,9 +27,9 @@ Vector3 camera_start_up = {0, 1, 0};
 
 Vector2 slider_nob_pos = {20, HEIGHT / 2};
 
-char const *image_path = "./imgs/4140047.png";
+// char const *image_path = "./imgs/4140047.png";
+char const *image_path = "./imgs/200px-Cave_Entrance.png";
 // char const *image_path = "./imgs/Lenna_(test_image).png";
-// char const *image_path = "./imgs/Flag_of_the_Netherlands.png";
 
 typedef struct {
     Color key;
@@ -64,30 +64,29 @@ void place_point_on_graph(Vector3 pos, Color color) {
 
 PixelPoint *make_LOP_list(Color *colors, int size, int LOP) {
     PixelPoint *pp = NULL;
-    int pixels = size / LOP;
-
+    int step = size / LOP;
     for (int i = 0; i < LOP; i++) {
         float r = 0, g = 0, b = 0;
-        for (int j = i * pixels; j < (i + 1) * pixels; j++) {
+        for (int j = i * step; j < (i + 1) * step; j++) {
             r += colors[j].r;
             g += colors[j].g;
             b += colors[j].b;
         }
-        r = r / pixels;
-        g = g / pixels;
-        b = b / pixels;
+        r = r / step;
+        g = g / step;
+        b = b / step;
 
         PixelPoint pixel = {.key = (Color){r, g, b}};
         hmputs(pp, pixel);
     }
+
     return pp;
 }
 
 
-
 void add_slider(int max, int *LOP) {
-    int y = HEIGHT - slider_nob_pos.y - 46;
-    float dist = y / (float)(HEIGHT - 62);
+    int y = HEIGHT - slider_nob_pos.y - 50;
+    float dist = y / (float)(HEIGHT - 65);
     *LOP = dist * max;
 
     DrawRectangle(30, 30, 10, HEIGHT - 60, WHITE);
@@ -122,6 +121,9 @@ int main() {
     int LOP = hmlen(pixel_points);
     int ww = hmlen(pixel_points);
 
+    printf("pixels: %d, amount_avrg: %d, LOP: %d\n", hmlen(pixel_points), pixels_length / LOP, pixels_length);
+
+    // return 0;
     SetTargetFPS(120);
     InitWindow(WIDTH, HEIGHT, "3D graph - Raylib");
     while (!WindowShouldClose()) {
