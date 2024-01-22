@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -27,6 +28,8 @@ Vector3 camera_start_pos = {2, 2, 2};
 Vector3 camera_start_up = {0, 1, 0};
 
 Vector2 slider_nob_pos = {20, HEIGHT / 2};
+
+bool image_supplied = false;
 
 typedef struct {
     Color key;
@@ -101,17 +104,27 @@ void add_slider(int max, int *LOP) {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("A img must be supplied");
-        return 0;
-    }
+    PixelPoint *pixel_points = NULL;
+    Color *colors;
+    int pixels_length = 0;
 
-    if (argc > 2) {
+    if (argc < 2) {
+        printf("No Image supplied, display default graph");
+    } else if (argc > 2) {
         printf("To many arguments");
         return 0;
+    } else {
+        const char *image_path = argv[1];
+        Image img = LoadImage(image_path);
+        colors = LoadImageColors(img);
+        
+        pixels_length = img.width * img.height;
+        pixel_points = make_LOP_list(colors, pixels_length, pixels_length);
     }
 
-    const char *image_path = argv[1];
+    int LOP = hmlen(pixel_points);
+    int max_pixels = hmlen(pixel_points);
+
 
     Camera3D camera = {
         .position = camera_start_pos,
@@ -119,16 +132,6 @@ int main(int argc, char *argv[]) {
         .up = camera_start_up,
         .fovy = 30,
         .projection = CAMERA_PERSPECTIVE};
-
-    Image img = LoadImage(image_path);
-    Color *colors = LoadImageColors(img);
-    int pixels_length = img.width * img.height;
-
-
-    PixelPoint *pixel_points = make_LOP_list(colors, pixels_length, pixels_length);
-    int LOP = hmlen(pixel_points);
-    int max_pixels = hmlen(pixel_points);
-
 
     SetTargetFPS(120);
     InitWindow(WIDTH, HEIGHT, "3D graph - Raylib");
@@ -140,7 +143,7 @@ int main(int argc, char *argv[]) {
         if (LOP <= 0) LOP = 1;
         if (LOP >= pixels_length) LOP = pixels_length;
 
-        pixel_points = make_LOP_list(colors, pixels_length, LOP);
+        if (argc == 2) pixel_points = make_LOP_list(colors, pixels_length, LOP);
 
         if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
             Vector2 mouseDelta = GetMouseDelta();
@@ -157,17 +160,19 @@ int main(int argc, char *argv[]) {
         }
 
         BeginDrawing();
-            BeginMode3D(camera);
-                ClearBackground(GetColor(0x181818AA));
-                for (int i = 0; i < hmlen(pixel_points); i++) {
-                    Vector3 place = {pixel_points[i].key.r / (float)255, pixel_points[i].key.g / (float)255, pixel_points[i].key.b / (float)255};
-                    Color color = {pixel_points[i].key.r, pixel_points[i].key.g, pixel_points[i].key.b, 255};
-                    place_point_on_graph(place, color);
-                }
-                draw_graph(AXIS_DETAIL);
-            EndMode3D();
-            DrawRectangle(0, 0, 70, HEIGHT, GetColor(0x404040FF));
-            add_slider(max_pixels, &LOP);
+        BeginMode3D(camera);
+        ClearBackground(GetColor(0x181818AA));
+        if (argc == 2) {
+            for (int i = 0; i < hmlen(pixel_points); i++) {
+                Vector3 place = {pixel_points[i].key.r / (float)255, pixel_points[i].key.g / (float)255, pixel_points[i].key.b / (float)255};
+                Color color = {pixel_points[i].key.r, pixel_points[i].key.g, pixel_points[i].key.b, 255};
+                place_point_on_graph(place, color);
+            }
+        }
+        draw_graph(AXIS_DETAIL);
+        EndMode3D();
+        DrawRectangle(0, 0, 70, HEIGHT, GetColor(0x404040FF));
+        add_slider(max_pixels, &LOP);
         EndDrawing();
     }
     CloseWindow();
